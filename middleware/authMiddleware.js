@@ -32,13 +32,13 @@ const validateToken = async (req, res, next) => {
 
     // Better Auth JWKS endpoint
     const JWKS = createRemoteJWKSet(
-      new URL("http://localhost:3000/api/auth/jwks")
+      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
     );
 
     // Verify token
     const { payload } = await jwtVerify(token, JWKS, {
-      issuer: "http://localhost:3000",
-      audience: "http://localhost:3000",
+      issuer: `${process.env.CLIENT_URL}`,
+      audience: `${process.env.CLIENT_URL}`,
     });
 
     // Verified user/token information

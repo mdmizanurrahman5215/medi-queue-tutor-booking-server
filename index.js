@@ -15,7 +15,7 @@ const authRoutes = require('./routes/auth/authRoutes');
 configDotenv();
 app.use(cors());
 app.use(express.json());
-const port = 5000;
+const port = process.env.PORT;
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -29,7 +29,7 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const db = client.db("mediQueTutorBooking")
     const tutorsCollections = db.collection("tutors")
     const bookingsCollections = db.collection("bookings")
@@ -39,7 +39,7 @@ async function run() {
         app.use("/api/user", authRoutes(authCollections));
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
