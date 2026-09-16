@@ -8,6 +8,7 @@ const cors = require('cors');
 const { configDotenv } = require('dotenv');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const tutorRoutes = require('./routes/tutorRoutes/tutorRoutes');
+const authRoutes = require('./routes/auth/authRoutes');
 
 
 
@@ -32,8 +33,10 @@ async function run() {
     const db = client.db("mediQueTutorBooking")
     const tutorsCollections = db.collection("tutors")
     const bookingsCollections = db.collection("bookings")
+    const authCollections = db.collection("user")
 
         app.use("/api/tutors", tutorRoutes(tutorsCollections));
+        app.use("/api/user", authRoutes(authCollections));
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

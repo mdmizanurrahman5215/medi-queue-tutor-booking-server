@@ -1,5 +1,6 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
+const validateToken = require("../../middleware/authMiddleware");
 
 const tutorRoutes = (tutorsCollections) => {
   const router = express.Router();
@@ -21,7 +22,7 @@ const tutorRoutes = (tutorsCollections) => {
    
  
 
-router.get("/:id", async (req, res) => {
+router.get("/:id",validateToken, async (req, res) => {
   try {
     const id = req.params.id;
     console.log({id});
