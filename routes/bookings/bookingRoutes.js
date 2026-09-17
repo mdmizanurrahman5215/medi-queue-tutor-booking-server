@@ -35,37 +35,6 @@ router.get("/", validateToken, async (req, res) => {
 });
    
  
-
-// router.get("/:id",validateToken, async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     console.log({id});
-    
-
-   
-//     const query = { _id: new ObjectId(id) };
-//     const tutor = await tutorsCollections.findOne(query);
-
-    
-//     if (!tutor) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Tutor not found",
-//       });
-//     }
-
-
-//     res.status(200).json(tutor);
-//   } catch (error) {
-//     console.error("Error fetching tutor details:", error);
-
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to fetch tutor details",
-//     });
-//   }
-// });
-
 router.post("/",validateToken, async (req, res) => {
   try {
     const bookingData = req?.body;
@@ -134,7 +103,7 @@ router.post("/",validateToken, async (req, res) => {
       totalHours: totalHours,
 
       // স্ট্যাটাস ও পেমেন্ট
-      status: "Pending",
+      status: "Confirmed",
       cancellationReason: null,
 
       paymentDetails: {
@@ -173,6 +142,51 @@ router.post("/",validateToken, async (req, res) => {
       success: false,
       message: error?.message || "Failed to create booking",
     });
+  }
+});
+
+
+router.delete("/:id", validateToken, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    if (!ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID" });
+    }
+
+    // ১. ডিলিট করার আগেই বুকিংয়ের তথ্য খুঁজে বের করা (tutorId পাওয়ার জন্য)
+    const booking = await bookingsCollections.findOne({
+      _id: new ObjectId(bookingId),
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // ২. বুকিংটি ডাটাবেজ থেকে ডিলিট করা
+    const result = await bookingsCollections.deleteOne({
+      _id: new ObjectId(bookingId),
+    });
+
+    // ৩. ডিলিট সফল হলে টিউটরের স্লট (totalSlot / slot) ১ বাড়িয়ে দেওয়া
+    if (result.deletedCount > 0) {
+      if (booking?.tutorId && ObjectId.isValid(booking.tutorId)) {
+        await tutorsCollections?.updateOne(
+          { _id: new ObjectId(booking.tutorId) },
+          { $inc: { totalSlot: 1 } } // অথবা আপনার DB ফিল্ডের নাম অনুযায়ী { slot: 1 }
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Booking removed and slot updated successfully",
+      });
+    }
+
+    res.status(400).json({ success: false, message: "Failed to delete booking" });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ success: false, message: "Failed to delete booking" });
   }
 });
 
