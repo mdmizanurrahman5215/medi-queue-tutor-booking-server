@@ -6,20 +6,33 @@ const validateToken = require("../../middleware/authMiddleware");
 const bookingRoutes = (bookingsCollections, tutorsCollections) => {
   const router = express.Router();
 
-//   router.get("/", async (req, res) => {
-//     try {
-//       const tutors = await collection.find().toArray();
+router.get("/", validateToken, async (req, res) => {
+  try {
+  
+    const userId = req.user?.id || req.user?._id || req.decoded?.uid;
 
-//       res.status(200).json(tutors);
-//     } catch (error) {
-//       console.error("Error fetching tutors:", error);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access: User ID not found",
+      });
+    }
 
-//       res.status(500).json({
-//         success: false,
-//         message: "Failed to fetch tutors",
-//       });
-//     }
-//   });
+   
+    const query = { userId: userId }; 
+
+    const bookings = await bookingsCollections.find(query).toArray();
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching user bookings:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bookings",
+    });
+  }
+});
    
  
 
@@ -53,7 +66,7 @@ const bookingRoutes = (bookingsCollections, tutorsCollections) => {
 //   }
 // });
 
-router.post("/", async (req, res) => {
+router.post("/",validateToken, async (req, res) => {
   try {
     const bookingData = req?.body;
 
