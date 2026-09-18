@@ -58,7 +58,6 @@ router.post("/",validateToken, async (req, res) => {
       }
     }
 
-    // ২. টিউটরের এভেলেবল স্লট আছে কিনা তা চেক করা
     const tutorObjectId = new ObjectId(bookingData?.tutorId);
     const tutor = await tutorsCollections.findOne({ _id: tutorObjectId });
 
@@ -76,19 +75,18 @@ router.post("/",validateToken, async (req, res) => {
       });
     }
 
-    // ৩. অবজেক্ট স্ট্রাকচার
+   
     const totalHours = Number(bookingData?.totalHours ?? 1);
     const hourlyFee = Number(bookingData?.hourlyFee ?? tutor?.hourlyFee ?? 0);
 
     const newBooking = {
-      // ইউজার ও স্টুডেন্ট ইনফরমেশন
+      
       userId: bookingData?.userId || null,
       studentName: bookingData?.studentName,
       studentEmail: bookingData?.studentEmail,
       phone: bookingData?.phone,
       studentImage: bookingData?.studentImage || "",
 
-      // টিউটর স্ন্যাপশট
       tutorId: tutorObjectId,
       tutorName: bookingData?.tutorName || tutor?.tutorName,
       tutorEmail: bookingData?.tutorEmail || tutor?.createdByEmail || "",
@@ -97,12 +95,11 @@ router.post("/",validateToken, async (req, res) => {
       hourlyFee: hourlyFee,
       teachingMode: bookingData?.teachingMode || tutor?.teachingMode || "Online",
 
-      // সেশন স্কেজুয়েল
+     
       bookingDate: bookingData?.bookingDate || new Date().toISOString(),
       preferredTimeSlot: bookingData?.preferredTimeSlot || tutor?.availableTimeSlot || "",
       totalHours: totalHours,
 
-      // স্ট্যাটাস ও পেমেন্ট
       status: "Confirmed",
       cancellationReason: null,
 
@@ -119,10 +116,9 @@ router.post("/",validateToken, async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    // ৪. ডাটাবেজে সেভ করা
+  
     const result = await bookingsCollections?.insertOne(newBooking);
 
-    // ৫. টিউটরের স্লট ১ কমানো
     await tutorsCollections?.updateOne(
       { _id: tutorObjectId },
       { $inc: { totalSlot: -1 } }
@@ -154,7 +150,6 @@ router.delete("/:id", validateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid ID" });
     }
 
-    // ১. ডিলিট করার আগেই বুকিংয়ের তথ্য খুঁজে বের করা (tutorId পাওয়ার জন্য)
     const booking = await bookingsCollections.findOne({
       _id: new ObjectId(bookingId),
     });
@@ -163,17 +158,15 @@ router.delete("/:id", validateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // ২. বুকিংটি ডাটাবেজ থেকে ডিলিট করা
     const result = await bookingsCollections.deleteOne({
       _id: new ObjectId(bookingId),
     });
 
-    // ৩. ডিলিট সফল হলে টিউটরের স্লট (totalSlot / slot) ১ বাড়িয়ে দেওয়া
     if (result.deletedCount > 0) {
       if (booking?.tutorId && ObjectId.isValid(booking.tutorId)) {
         await tutorsCollections?.updateOne(
           { _id: new ObjectId(booking.tutorId) },
-          { $inc: { totalSlot: 1 } } // অথবা আপনার DB ফিল্ডের নাম অনুযায়ী { slot: 1 }
+          { $inc: { totalSlot: 1 } } 
         );
       }
 
@@ -187,6 +180,64 @@ router.delete("/:id", validateToken, async (req, res) => {
   } catch (error) {
     console.error("Error deleting booking:", error);
     res.status(500).json({ success: false, message: "Failed to delete booking" });
+  }
+});
+
+router.patch("/:id", validateToken, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { studentName, phone, bookingDate, teachingMode, notes } = req.body;
+
+    // ১. ObjectId ভ্যালিডেশন
+    if (!ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ success: false, message: "Invalid Booking ID" });
+    }
+
+    const filter = { _id: new ObjectId(bookingId) };
+
+    // ২. বুকিং এক্সিস্ট করে কি না চেক করা
+    const booking = await bookingsCollections.findOne(filter);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // ৩. যেসব ফিল্ড ক্লায়েন্ট থেকে পাঠানো হয়েছে সেগুলো এক্সট্র্যাক্ট করা
+    const updatedFields = {};
+    if (studentName) updatedFields.studentName = studentName.trim();
+    if (phone) updatedFields.phone = phone.trim();
+    if (bookingDate) updatedFields.bookingDate = new Date(bookingDate);
+    if (teachingMode) updatedFields.teachingMode = teachingMode;
+    if (notes !== undefined) updatedFields.notes = notes;
+
+    // আপডেট করার মতো কোনো ডাটা না থাকলে এরর দেওয়া
+    if (Object.keys(updatedFields).length === 0) {
+      return res.status(400).json({ success: false, message: "No fields provided to update" });
+    }
+
+    // ৪. ডাটাবেজে আপডেট সম্পাদন করা
+    const updateDoc = {
+      $set: {
+        ...updatedFields,
+        updatedAt: new Date(),
+      },
+    };
+
+    const result = await bookingsCollections.updateOne(filter, updateDoc);
+
+    if (result.modifiedCount > 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Booking updated successfully",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "No changes were made to the booking",
+    });
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    return res.status(500).json({ success: false, message: "Failed to update booking" });
   }
 });
 
