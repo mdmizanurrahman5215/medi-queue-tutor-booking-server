@@ -36,7 +36,7 @@ async function run() {
     const bookingsCollections = db.collection("bookings")
     const authCollections = db.collection("user")
 
-        app.use("/api/tutors", tutorRoutes(tutorsCollections));
+        app.use("/api/tutors", tutorRoutes(tutorsCollections,bookingsCollections));
         app.use("/api/bookings", bookingRoutes(bookingsCollections, tutorsCollections));
         app.use("/api/user", authRoutes(authCollections));
 

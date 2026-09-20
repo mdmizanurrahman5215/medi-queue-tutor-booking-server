@@ -188,20 +188,19 @@ router.patch("/:id", validateToken, async (req, res) => {
     const bookingId = req.params.id;
     const { studentName, phone, bookingDate, teachingMode, notes } = req.body;
 
-    // ১. ObjectId ভ্যালিডেশন
+
     if (!ObjectId.isValid(bookingId)) {
       return res.status(400).json({ success: false, message: "Invalid Booking ID" });
     }
 
     const filter = { _id: new ObjectId(bookingId) };
 
-    // ২. বুকিং এক্সিস্ট করে কি না চেক করা
+
     const booking = await bookingsCollections.findOne(filter);
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // ৩. যেসব ফিল্ড ক্লায়েন্ট থেকে পাঠানো হয়েছে সেগুলো এক্সট্র্যাক্ট করা
     const updatedFields = {};
     if (studentName) updatedFields.studentName = studentName.trim();
     if (phone) updatedFields.phone = phone.trim();
@@ -209,12 +208,12 @@ router.patch("/:id", validateToken, async (req, res) => {
     if (teachingMode) updatedFields.teachingMode = teachingMode;
     if (notes !== undefined) updatedFields.notes = notes;
 
-    // আপডেট করার মতো কোনো ডাটা না থাকলে এরর দেওয়া
+
     if (Object.keys(updatedFields).length === 0) {
       return res.status(400).json({ success: false, message: "No fields provided to update" });
     }
 
-    // ৪. ডাটাবেজে আপডেট সম্পাদন করা
+    
     const updateDoc = {
       $set: {
         ...updatedFields,
