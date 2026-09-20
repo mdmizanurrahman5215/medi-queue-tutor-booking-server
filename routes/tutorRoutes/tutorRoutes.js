@@ -5,13 +5,13 @@ const validateToken = require("../../middleware/authMiddleware");
 const tutorRoutes = (tutorsCollections,bookingsCollections) => {
   const router = express.Router();
 
-  // 1. Get All Tutors
+ 
 router.get("/", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     
-    // extra spaces সরিয়ে দেওয়ার জন্য .trim() ব্যবহার করা হয়েছে
+ 
     const search = (req.query.search || "").trim();
     const subject = (req.query.subject || "").trim();
     const fromDate = req.query.fromDate || "";
@@ -19,10 +19,10 @@ router.get("/", async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // 1. Dynamic MongoDB Query Filter
+  
     const query = {};
 
-    // Search by Name or Institution (Case-Insensitive Search)
+   
     if (search) {
       query.$or = [
         { tutorName: { $regex: search, $options: "i" } },
@@ -30,13 +30,13 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // Filter by Specific Subject (Case-Insensitive Search)
+    
     if (subject && subject !== "All") {
-      // $options: "i" নিশ্চিত করে Uppercase/Lowercase উভয় ইনপুটে কাজ করবে
+      
       query.subject = { $regex: subject, $options: "i" };
     }
 
-    // Filter by Date Range
+    
     if (fromDate || toDate) {
       query.sessionStartDate = {};
       if (fromDate) {
@@ -49,13 +49,13 @@ router.get("/", async (req, res) => {
       }
     }
 
-    // 2. Total Count matching filters
+
     const totalCount = await tutorsCollections.countDocuments(query);
 
-    // 3. Get All Unique Subjects (Normalized Case to avoid Duplicate "math" & "Math")
+    
     const subjectsAggregate = await tutorsCollections
       .aggregate([
-        // ১. subject যদি String বা Array হয়, তাকে Array বানিয়ে নিবে
+      
         {
           $project: {
             subjectArray: {
@@ -67,36 +67,34 @@ router.get("/", async (req, res) => {
             }
           }
         },
-        // ২. Array-কে ভেঙে আলাদা ডকুমেন্টে রূপান্তর করবে
+     
         { $unwind: "$subjectArray" },
-        // ৩. স্পেস কেটে দিবে এবং সম্পূর্ণ Lowercase করে নিয়ে Group করবে (যাতে "Math" ও "math" একই গণ্য হয়)
+        
         {
           $project: {
             cleanSubject: { $trim: { input: "$subjectArray" } },
             lowerSubject: { $toLower: { $trim: { input: "$subjectArray" } } }
           }
         },
-        // ৪. Lowercase টেক্সট ধরে ইউনিক গ্রুপ করবে কিন্তু আসল লেখাটির থেকে একটি রেফারেন্স রাখবে
+     
         {
           $group: {
             _id: "$lowerSubject",
             originalSubject: { $first: "$cleanSubject" }
           }
         },
-        // ৫. ফাঁকা বা null Subject বাদ দিবে
-        { $match: { _id: { $ne: null, $ne: "" } } },
-        // ৬. A-Z আকারে সাজাবে
+  
+
         { $sort: { _id: 1 } }
       ])
       .toArray();
 
-    // ড্রপডাউনের জন্য প্রথম অক্ষর Capitalize/Title Case করে নেওয়া
+
     const availableSubjects = subjectsAggregate.map((item) => {
       const str = item.originalSubject || item._id;
       return str.charAt(0).toUpperCase() + str.slice(1);
     });
 
-    // 4. Fetch Paginated Tutors
     const tutors = await tutorsCollections
       .find(query)
       .skip(skip)
@@ -109,7 +107,7 @@ router.get("/", async (req, res) => {
     res.status(200).json({
       success: true,
       data: tutors,
-      availableSubjects, // সম্পূর্ণ সুন্দরভাবে ক্যাপিটালাইজড ইউনিক সাবজেক্ট লিস্ট
+      availableSubjects, 
       pagination: {
         totalCount,
         totalPages,
@@ -129,7 +127,7 @@ router.get("/", async (req, res) => {
   // 2. Get My Tutors (Specific Routes MUST come before Dynamic Param Routes like /:id)
   router.get("/my-tutors", validateToken, async (req, res) => {
     try {
-      // টোকেন ডিকোড অথবা কোয়েরি পারামস থেকে আইডি এবং ইমেইল নেওয়া
+      
       const userId = req.user?.id || req.user?._id || req.query.userId;
       const userEmail = req.user?.email || req.query.email;
 
@@ -140,7 +138,7 @@ router.get("/", async (req, res) => {
         });
       }
 
-      // userId অথবা createdByEmail / userEmail দিয়ে ডাটা খোঁজা
+   
       const query = {
         $or: [
           ...(userId ? [{ userId: userId }] : []),
@@ -203,10 +201,9 @@ router.get("/", async (req, res) => {
   try {
     const tutorData = req?.body;
 
-    // 'subject' বা 'subjects' যেকোনো একটি ডাটা থাকলেই যেন Validation পাস করে
+  
     const subjectsData = tutorData?.subjects || tutorData?.subject;
 
-    // subject Validation চেক
     if (!subjectsData || (Array.isArray(subjectsData) && subjectsData.length === 0)) {
       return res?.status(400)?.json({
         success: false,
@@ -237,7 +234,7 @@ router.get("/", async (req, res) => {
       }
     }
 
-    // Array/String উভয় ফরম্যাটকে সঠিকভাবে অ্যারে হিসেবে প্রস্তুত করা
+  
     let normalizedSubjects = [];
     if (Array.isArray(subjectsData)) {
       normalizedSubjects = subjectsData;
@@ -248,7 +245,6 @@ router.get("/", async (req, res) => {
     const newTutor = {
       tutorName: tutorData?.tutorName,
       image: tutorData?.image,
-      // ডাটাবেজে subjects এবং backward compatibility এর জন্য subject দুটোই রাখা হলো
       subjects: normalizedSubjects,
       subject: Array.isArray(normalizedSubjects) ? normalizedSubjects.join(", ") : normalizedSubjects,
       bio: tutorData?.bio,
@@ -323,7 +319,7 @@ router.put("/:id", async (req, res) => {
           } else if (key === "sessionStartDate" && value) {
             acc[key] = new Date(value).toISOString();
           } else if (key === "subjects" || key === "subject") {
-            // subjects বা subject যাই আপডেট করার জন্য আসুক, দুটো ফিল্ডই সিঙ্ক রাখা হবে
+     
             if (Array.isArray(value)) {
               acc["subjects"] = value;
               acc["subject"] = value.join(", ");
