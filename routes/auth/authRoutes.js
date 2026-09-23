@@ -10,12 +10,9 @@ const authRoutes = (authCollections) => {
       const userData = req?.body;
 
       // Required fields list
-      const requiredFields = [
-        "name",
-        "email",
-      ];
+      const requiredFields = ["name", "email", "password"];
 
-      // Validation check
+      // Validation check for missing fields
       for (const field of requiredFields) {
         if (!userData?.[field]) {
           return res?.status(400)?.json({
@@ -23,6 +20,38 @@ const authRoutes = (authCollections) => {
             message: `Missing required field: ${field}`,
           });
         }
+      }
+
+      const { password } = userData;
+
+      // Password Criteria Validations
+      if (password.length < 6) {
+        return res?.status(400)?.json({
+          success: false,
+          message: "Password must be at least 6 characters long",
+        });
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        return res?.status(400)?.json({
+          success: false,
+          message: "Password must contain at least one uppercase letter",
+        });
+      }
+
+      if (!/[a-z]/.test(password)) {
+        return res?.status(400)?.json({
+          success: false,
+          message: "Password must contain at least one lowercase letter",
+        });
+      }
+
+      // 1. Special Character Validation Check
+      if (!/[!@#$%^&*(),.?":{}|<>]/?.test(password)) {
+        return res?.status(400)?.json({
+          success: false,
+          message: "Password must contain at least one special character",
+        });
       }
 
       // Check if user already exists
@@ -37,12 +66,15 @@ const authRoutes = (authCollections) => {
         });
       }
 
+      // 2. Role handling: lowercase conversion
+      const normalizedRole = userData?.role ? userData?.role?.toLowerCase() : "user";
+
       // Construct New User Object
       const newUser = {
         name: userData?.name,
         email: userData?.email,
         image: userData?.image || "",
-        role: userData?.role || "user", // Default role
+        role: normalizedRole, 
         createdAt: new Date().toISOString(),
       };
 
